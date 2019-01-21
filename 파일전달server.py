@@ -1,5 +1,6 @@
 import socketserver
 from os.path import exists
+from os import walk
 
 HOST = ''
 PORT = 9009
@@ -10,10 +11,9 @@ class MyTcpHandler(socketserver.BaseRequestHandler):
         print('[%s] 연결됨' % self.client_address[0])
 
     def fileTransfer(self):
-        msg = self.request.recv(1024)
-        while msg:
-            if msg.decode() == '0' or '1' or '2':
-                self.sendmessage
+        choice = "다운로드 받을 파일이름을 입력하세요:"
+        self.request.send(choice.encode())
+
         data_transferred = 0
         filename = self.request.recv(1024)  # 클라이언트로 부터 파일이름을 전달받음
         filename = filename.decode()  # 파일이름 이진 바이트 스트림 데이터를 일반 문자열로 변환
@@ -34,22 +34,38 @@ class MyTcpHandler(socketserver.BaseRequestHandler):
         print('전송완료[%s], 전송량[%d]' % (filename, data_transferred))
 
     def dirPrint(self):
+        path_dir = 'D:\git\Python\server'
+        file_list = []
+
+        # file_list = file_list.sort()
+
+        for (path, dir, files) in walk(path_dir):
+            for file in files:
+                file_list.append(file)
+
+        self.request.send(file_list)
 
     def msgHandler(self, username, msg): # 전송한 msg를 처리하는 부분
 
-        conn, addr = username
+        # conn, addr = username
+        msg = self.request.recv(1024)
+        while msg:
+            # if msg != '1' or '2 'or '0':  # 보낸 메세지의 첫문자가 약속된 숫자가 아니면
+            #     msg = "0, 1, 2 중에 숫자를 선택해주세요."
+            #     self.request.send(msg.encode())
+            #     return
 
-        if msg != '1' or '2 'or '0':  # 보낸 메세지의 첫문자가 약속된 숫자가 아니면
-            msg = "0, 1, 2 중에 숫자를 선택해주세요."
-            conn.send(msg.encode())
-            return
+            if msg == '1':  # 보낸 메세지가 '1'이면
+                self.dirPrint()
+                return 1
 
-        if msg == '1':  # 보낸 메세지가 '1'이면
-            self.dirPrint()
-            return 1
+            if msg == '2':  # 보낸 메세지가 '2'이면
+                self.fileTransfer()
+                return 2
 
-        if msg == '2':  # 보낸 메세지가 '2'이면
-            return 2
+            if msg == '0':  # 보낸 메세지가 '0'이면
+                self.request.close()
+                return -1
 
 
 def runServer():
